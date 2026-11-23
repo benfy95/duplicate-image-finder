@@ -420,6 +420,7 @@ class MainWindow(QMainWindow):
                     self.folder_list.changed, self.split.splitterMoved,
                     self.tree.header().sectionResized, self.tree.header().sectionMoved):
             sig.connect(self._schedule_save)
+        self.folder_list.changed.connect(self._update_stats)   # "Show hidden" only for the scanned folders
 
     def _reset_settings(self):
         if QMessageBox.question(self, tr("confirm_title"), tr("reset_q")) != QMessageBox.StandardButton.Yes:
@@ -997,6 +998,7 @@ class MainWindow(QMainWindow):
             return
         if not self.result:
             self.lb_stats.setText(tr("stats_none"))
+            self.btn_unhide.hide()
             return
         groups = self.model.groups
         dups = sum(1 for g in groups for m in g.members[1:] if m.kind != "variant")
@@ -1008,7 +1010,14 @@ class MainWindow(QMainWindow):
             text += tr("stats_hidden", n=len(self._hidden))
         self.lb_stats.setText(text)
         self.btn_unhide.setText(tr("btn_unhide", n=len(self._hidden)))
-        self.btn_unhide.setVisible(bool(self._hidden) and not self.progress.isVisible())
+        self.btn_unhide.setVisible(bool(self._hidden) and not self.progress.isVisible()
+                                   and self._same_folders())
+
+    def _same_folders(self):
+        """Is the folder list still the one the shown results were scanned from?
+        (Show hidden only makes sense for those folders.)"""
+        from ..session_file import folders_key
+        return folders_key(self.folder_list.entries()) == folders_key(self._result_folders)
 
     def _toggle_logging(self, on):
         if on:
