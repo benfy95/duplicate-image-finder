@@ -163,6 +163,12 @@ class Embedder:
         except Exception as e:
             if self.device == "cpu":
                 raise
+            if len(batch) > 8:              # maybe out of GPU memory: try smaller batches first
+                try:
+                    h = len(batch) // 2
+                    return np.concatenate([self.embed(batch[:h]), self.embed(batch[h:])])
+                except Exception:
+                    pass
             # GPU driver problem (device lost, out of memory...): continue on CPU
             self.fell_back = f"GPU failed ({type(e).__name__}); continuing on CPU"
             self.device = "cpu"
@@ -180,10 +186,12 @@ class OrbMatcher:
     best and second-best key in B, then the ratio test. Same result as
     worker.match_cpu (OpenCV BFMatcher + knnMatch(k=2)); see tools/export_orbmatch.py."""
 
-    BATCH = 16          # image pairs per GPU call (fixed shapes: no re-planning)
     ROWS = 3072         # descriptors per image are padded to a multiple of this
 
     def __init__(self):
+        from .sysinfo import current
+        # image pairs per GPU call: ~150 MB of VRAM each, sized to the card (sysinfo)
+        self.batch = current().match_batch
         if not os.path.exists(ORB_MATCH_PATH):
             raise FileNotFoundError(ORB_MATCH_PATH)
         so = ort.SessionOptions()
@@ -198,8 +206,9 @@ class OrbMatcher:
         """pairs: list of (desc_a, desc_b) uint8 [n, 32] arrays.
         Returns, per pair, (query indices into A, matching indices into B)."""
         out = []
-        P = self.BATCH
-        for s in range(0, len(pairs), P):
+        s = 0
+        while s < len(pairs):
+            P = self.batch
             batch = pairs[s:s + P]
             longest = max(max(len(da), len(db)) for da, db in batch)
             n = -(-longest // self.ROWS) * self.ROWS
@@ -210,7 +219,14 @@ class OrbMatcher:
                 DA[i, :len(da)] = da
                 DB[i, :len(db)] = db
                 MB[i, 0, :len(db)] = 0
-            J1, V1, V2, CNT = self.sess.run(None, {"DA": DA, "DB": DB, "MB": MB})
+            try:
+                J1, V1, V2, CNT = self.sess.run(None, {"DA": DA, "DB": DB, "MB": MB})
+            except Exception:
+                if P == 1:
+                    raise                   # the engine continues on the CPU
+                self.batch = P // 2         # probably out of GPU memory: smaller calls
+                continue
+            s += len(batch)
             for i, (da, db) in enumerate(batch):
                 k = len(da)
                 d1 = (256 - V1[i, :k, 0].astype(np.float32)) / 2
@@ -309,9 +325,9 @@ def precheck_inputs(src, dst, rng, hyps=PRECHECK_HYPOTHESES):
 class RansacSupport:
     """Best RANSAC support per pair on the GPU (DirectML), see tools/export_ransac.py."""
 
-    BUDGET = 64 * 128   # pairs x padded matches per GPU call
-
     def __init__(self):
+        from .sysinfo import current
+        self.budget = current().ransac_budget     # pairs x padded matches per GPU call
         if not os.path.exists(RANSAC_PATH):
             raise FileNotFoundError(RANSAC_PATH)
         so = ort.SessionOptions()
@@ -330,8 +346,9 @@ class RansacSupport:
             by_k.setdefault(max(128, 1 << int(np.ceil(np.log2(len(srcs[i]))))), []).append(i)
         Hn = PRECHECK_HYPOTHESES
         for K, idxs in by_k.items():
-            P = max(1, self.BUDGET // K)
-            for s in range(0, len(idxs), P):
+            s = 0
+            while s < len(idxs):
+                P = max(1, self.budget // K)
                 part = idxs[s:s + P]
                 HM = np.full((P, Hn, 3, 3), np.nan, np.float32)      # unused slots count 0
                 ST = np.zeros((P, 1, 3, K), np.float32)
@@ -346,8 +363,15 @@ class RansacSupport:
                     ST[r, 0, 0, :m], ST[r, 0, 1, :m], ST[r, 0, 2, :m] = sn[:, 0], sn[:, 1], 1
                     DX[r, 0, :m], DY[r, 0, :m], MK[r, 0, :m] = dn[:, 0], dn[:, 1], 1
                     TH[r] = th
-                cnt = self.sess.run(None, {"HM": HM, "ST": ST, "DX": DX, "DY": DY, "MK": MK, "TH": TH})[0]
+                try:
+                    cnt = self.sess.run(None, {"HM": HM, "ST": ST, "DX": DX, "DY": DY, "MK": MK, "TH": TH})[0]
+                except Exception:
+                    if P == 1:
+                        raise               # no pre-check: the CPU checks every pair
+                    self.budget = (P // 2) * K     # probably out of GPU memory: smaller calls
+                    continue
                 out[part] = np.rint(cnt[:len(part)]).astype(np.int64)
+                s += len(part)
         return out
 
 
@@ -428,12 +452,14 @@ def _knn_ort(x, k, min_score, margin, kref, device, progress, check):
     gpu = device == "dml"
     dtype = np.float16 if gpu else np.float32
     xq = np.ascontiguousarray(x, dtype=dtype)
-    shard_size = KNN_SHARD if gpu else n
+    from .sysinfo import current
+    shard_size = min(KNN_SHARD, current().gpu_key_shard) if gpu else n
     shards = [_KeyShard(xq[s:s + shard_size], s, gpu, dtype) for s in range(0, n, shard_size)]
     kk = kref + 1                                      # +1 for the row itself
-    # keep each [rows, keys] score block around 256M elements (~512 MB in fp16)
+    # each [rows, keys] score block stays within the GPU budget (256M elements max, 512 MB fp16)
     widest = max(s.npad for s in shards)
-    qblock = int(max(64, min(1024, 2 ** int(np.log2(max(1, 2.56e8 / widest))))))
+    elems = current().gpu_score_elems if gpu else 2.56e8
+    qblock = int(max(64, min(1024, 2 ** int(np.log2(max(1, elems / widest))))))
     out_i, out_j = [], []
     qs = 0
     while qs < n:
@@ -495,7 +521,7 @@ def _knn_cuda(x, k, min_score, margin, kref, progress, check):
 
 
 def knn_pairs(x, k, min_score, device=None, progress=None, check=None, margin=0.0, kref=16,
-              qblock=1024, kblock=65536):
+              qblock=None, kblock=65536):
     """Pairs (i<j) where j is among i's k most similar rows (dot product) with
     score >= min_score. With margin > 0 a neighbour must also beat i's kref-th
     neighbour by that margin, i.e. stand out from look-alikes.
@@ -528,6 +554,9 @@ def knn_pairs(x, k, min_score, device=None, progress=None, check=None, margin=0.
                 raise
             i, j = _knn_ort(x, k, min_score, margin, kref, "cpu", progress, check)  # GPU failed
         return _unique_pairs(i, j, n)
+    if qblock is None:                     # [qblock x 65536] float32 score blocks, sized to free RAM
+        from .sysinfo import current
+        qblock = current().cpu_score_rows
     x = np.ascontiguousarray(x, dtype=np.float32)
     use_margin = margin > 0 and n - 1 >= kref
     lo = min_score - (margin if use_margin else 0.0) - 1e-4

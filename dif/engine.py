@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from . import features, worker
+from . import features, sysinfo, worker
 from .cache import Cache
 from .formats import available_exts, ext_of, format_rank, sniff
 from .variants import DEFAULT_PATTERNS, apply_variants
@@ -181,6 +181,7 @@ class ScanEngine:
         self._cancelled = is_cancelled or (lambda: False)
         self._last_emit = 0.0
         self.warnings = []
+        self.budget = sysinfo.Budget()      # replaced by sysinfo.plan() once the device is known
 
     # ---------- helpers ----------
     def check(self):
@@ -300,7 +301,7 @@ class ScanEngine:
                 if need_emb and r.get("thumb") is not None:
                     emb_batch.append(r["thumb"])
                     emb_idx.append(i)
-                    if len(emb_batch) >= 128:
+                    if len(emb_batch) >= self.budget.embed_batch:
                         flush_emb()
             pending_rows.append(i)
             self.progress("analyze", done[0], len(todo))
@@ -448,7 +449,11 @@ class ScanEngine:
                     ft.emb = None
             self._log(f"Device: {dev_label}")
 
-            nworkers = o.workers or max(1, min(24, (os.cpu_count() or 2) - 1))
+            # work sizes for this computer: GPU memory, free RAM, CPU cores (dif/sysinfo.py)
+            self.budget = sysinfo.plan(device, o.workers)
+            sysinfo.set_current(self.budget)
+            self._log(self.budget.describe())
+            nworkers = self.budget.workers
             if todo or need_emb:
                 pool = WorkerPool(nworkers)
             if todo:
@@ -458,6 +463,14 @@ class ScanEngine:
                     self.warn(embedder.fell_back)
                     dev_label = "CPU"
                     device = self._match_device = "cpu"   # GPU failed once: stay on the CPU
+            # The AI model is not needed after this point: give its GPU memory back
+            # before the keypoint check (matters on small graphics cards).
+            embedder = None
+            import gc
+            gc.collect()
+            from . import cuda
+            if cuda.torch is not None:
+                cuda.torch.cuda.empty_cache()
 
             # --- exact duplicates ---
             exact_pairs = self.exact(ft, cache)
@@ -530,7 +543,6 @@ class ScanEngine:
         return shown, hidden
 
     VERIFY_CHUNK = 1024      # pairs per step of the keypoint check
-    MAX_KEYPOINT_SETS = 8000  # keypoint sets kept in memory (~120 KB each)
 
     def _verify(self, ft, pairs, verified, pool, cache, device=None):
         """Keypoint check of candidate crop pairs.
@@ -622,8 +634,9 @@ class ScanEngine:
                     refs[i] -= 1
                     if refs[i] <= 0:
                         kp.pop(i, None)
-            if len(kp) > self.MAX_KEYPOINT_SETS:   # bound memory: recompute later if needed
-                for i in [i for i in kp if i not in keep][:len(kp) - self.MAX_KEYPOINT_SETS]:
+            cap = self.budget.keypoint_sets          # ~120 KB each, sized to free RAM
+            if len(kp) > cap:                        # bound memory: recompute later if needed
+                for i in [i for i in kp if i not in keep][:len(kp) - cap]:
                     del kp[i]
 
         def check_pairs(ready, fut):

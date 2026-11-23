@@ -137,8 +137,9 @@ def knn_topk(x, kk, progress=None, check=None):
     dtype = np.float32 if n * d * 4 + 2.56e8 * 4 < free * 0.5 else np.float16
     keys = torch.from_numpy(np.ascontiguousarray(x, dtype=dtype)).cuda()
     kk = min(kk, n)
-    # score block [rows, n]: keep it around 256M elements
-    qblock = int(max(64, min(4096, 2 ** int(np.log2(max(1, 2.56e8 / n))))))
+    # score block [rows, n]: within the GPU budget (sysinfo), 256M elements at most
+    from .sysinfo import current
+    qblock = int(max(64, min(4096, 2 ** int(np.log2(max(1, current().gpu_score_elems / n))))))
     qs = 0
     with torch.inference_mode():
         while qs < n:
@@ -192,14 +193,23 @@ class Matcher:
         return out
 
     def match_filter(self, items, ratio=0.75):
+        from .sysinfo import current
+        # [P, na, nb] fp16 score tensor: ~600 MB on a big card, less on smaller ones
+        elems = 3e8 * current().match_batch / 8
         out = []
         with torch.inference_mode():
             s = 0
             while s < len(items):
-                # pairs per call: keep the [P, na, nb] score tensor under ~600 MB
                 longest = max(max(len(a), len(b)) for a, b, _, _ in items[s:s + 64])
-                P = int(max(1, min(64, 3e8 // max(1, longest * longest))))
-                out += self._batch(items[s:s + P], ratio)
+                P = int(max(1, min(64, elems // max(1, longest * longest))))
+                try:
+                    out += self._batch(items[s:s + P], ratio)
+                except torch.OutOfMemoryError:
+                    torch.cuda.empty_cache()
+                    if P == 1:
+                        raise                 # the engine continues on the CPU
+                    elems = max(1, P // 2) * longest * longest
+                    continue
                 s += P
         return out
 
@@ -236,11 +246,20 @@ class Matcher:
         self.gen.manual_seed(12345)                                 # repeatable results
         Hn = self.HYPOTHESES
         s = 0
+        from .sysinfo import current
+        elems = 6e7 * current().match_batch / 8
         while s < len(todo):
             k_max = max(len(srcs[i]) for i in todo[s:s + 64])
-            P = int(max(1, min(64, 6e7 // (Hn * k_max))))
+            P = int(max(1, min(64, elems // (Hn * k_max))))
             part = todo[s:s + P]
-            best[part] = self._support(srcs, dsts, part, Hn)
+            try:
+                best[part] = self._support(srcs, dsts, part, Hn)
+            except torch.OutOfMemoryError:
+                torch.cuda.empty_cache()
+                if P == 1:
+                    raise
+                elems = max(1, P // 2) * Hn * k_max
+                continue
             s += P
         return best
 
