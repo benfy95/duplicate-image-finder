@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Duplicate Image Finder
+Name[zh_TW]=重複圖片搜尋器
+Name[zh_CN]=重复图片查找器
+Name[ja]=重複画像ファインダー
+Comment=Find exact, resized, re-encoded and cropped duplicate images
+Exec=duplicate-image-finder %F
+Icon=duplicate-image-finder
+Terminal=false
+Categories=Graphics;Utility;
+Keywords=duplicate;images;photos;cleanup;
+StartupWMClass=duplicate-image-finder

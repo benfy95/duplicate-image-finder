@@ -1,0 +1,8 @@
+# Runtime dependencies (no PyTorch needed: the AI model runs on ONNX Runtime)
+PySide6>=6.8
+pillow>=11.3
+numpy
+opencv-python-headless
+send2trash
+onnxruntime-directml; sys_platform == "win32"
+onnxruntime; sys_platform != "win32"

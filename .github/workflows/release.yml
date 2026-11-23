@@ -1,0 +1,121 @@
+# Builds Duplicate Image Finder for Windows, Linux and macOS, tests each build
+# with a headless scan, and (for a version tag) creates a DRAFT GitHub release
+# with all files attached. Review the draft, then publish it.
+#
+#   git tag v0.1.0 && git push origin v0.1.0      # build + draft release
+#   Actions tab > "Build and release" > Run workflow   # build only (artifacts)
+name: Build and release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Build (build.bat)
+        shell: cmd
+        env:
+          PY_PYTHON: ${{ env.PYTHON_VERSION }}    # make "py -3" pick this Python
+        run: call build.bat < NUL
+      - name: Smoke test
+        shell: bash
+        run: |
+          python -m pip install -q numpy pillow
+          python tools/smoke_test.py dist/DuplicateImageFinder/DuplicateImageFinder.exe
+      - name: Name the release file
+        shell: bash
+        run: |
+          VER=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' dif/__init__.py)
+          mkdir -p out
+          cp release/DuplicateImageFinder.exe "out/DuplicateImageFinder-$VER-Windows-x64.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: out/*
+
+  linux:
+    runs-on: ubuntu-22.04          # older glibc = runs on more distros
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Packaging tools and Qt runtime libraries
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q rpm ruby-dev build-essential \
+            libxcb-cursor0 libxkbcommon-x11-0 libegl1 libfontconfig1 libdbus-1-3
+          sudo gem install --no-document fpm
+      - name: Build (AppImage, .deb, .rpm)
+        env:
+          PYTHON: python
+        run: bash packaging/linux/build_linux.sh
+      - name: Smoke test (GUI starts, folder build, AppImage)
+        env:
+          QT_QPA_PLATFORM: offscreen
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          python -m pip install -q numpy pillow
+          export DIF_HOME=$(mktemp -d)
+          .venv-build/bin/python -c "import sys; from PySide6.QtWidgets import QApplication; app = QApplication(sys.argv); from dif.gui.main_window import MainWindow; w = MainWindow(); print('GUI window created')"
+          python tools/smoke_test.py dist/DuplicateImageFinder/DuplicateImageFinder
+          python tools/smoke_test.py release/DuplicateImageFinder-*-x86_64.AppImage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+
+  macos:
+    runs-on: macos-14              # Apple Silicon (arm64)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Build (.app, .dmg)
+        env:
+          PYTHON: python
+        run: bash packaging/macos/build_macos.sh
+      - name: Smoke test (GUI starts, app bundle)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pip install -q numpy pillow
+          export DIF_HOME=$(mktemp -d)
+          .venv-build/bin/python -c "import sys; from PySide6.QtWidgets import QApplication; app = QApplication(sys.argv); from dif.gui.main_window import MainWindow; w = MainWindow(); print('GUI window created')"
+          python tools/smoke_test.py "dist/Duplicate Image Finder.app/Contents/MacOS/DuplicateImageFinder"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: release/*.dmg
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: files
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: files/*
+          generate_release_notes: true

@@ -1,0 +1,7 @@
+# Optional format plugins. Each is installed separately; a failure only
+# disables that format.
+pi-heif
+rawpy
+# JPEG XL. GPL-3.0: used when running from source only, never bundled into the exe
+# (build.bat skips it).
+pillow-jxl-plugin

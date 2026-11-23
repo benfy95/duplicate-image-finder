@@ -1,0 +1,30 @@
+# --- personal data: never commit ---
+# test pictures (third-party artwork)
+/images/
+/images_2/
+/images.zip
+# settings, cache, saved progress (contain your folder paths and exception patterns)
+/data/
+/logs/
+cli_output.txt
+
+# --- environments ---
+/.venv/
+/.venv-build/
+
+# --- build output (the release exe goes on the GitHub Releases page) ---
+/build/
+/dist/
+/release/
+*.partial
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+
+# --- editors / OS ---
+.vscode/
+.idea/
+.claude/
+Thumbs.db
+desktop.ini

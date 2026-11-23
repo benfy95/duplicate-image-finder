@@ -1,0 +1,8 @@
+# Developer-only tools. Not needed to run the app.
+#   build.bat              -> pyinstaller
+#   tools/export_onnx.py   -> torch, timm, onnx, onnxscript (regenerates the model)
+pyinstaller>=6.10
+torch
+timm
+onnx
+onnxscript

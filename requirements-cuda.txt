@@ -1,0 +1,9 @@
+# Optional NVIDIA CUDA acceleration (dif/cuda.py), for running from source.
+# When a CUDA build of PyTorch is installed, Settings > Device > Auto uses CUDA
+# (faster AI model, GPU keypoint matching and GPU RANSAC pre-check); otherwise
+# the app uses DirectML (any GPU) or the CPU. The packaged exe never includes it.
+#
+# Install (about 3 GB):
+#   .venv\Scripts\python -m pip install -r requirements-cuda.txt --index-url https://download.pytorch.org/whl/cu128 --extra-index-url https://pypi.org/simple
+torch
+timm
