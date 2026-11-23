@@ -18,8 +18,18 @@ if not exist "models\dinov2_vits14_224.onnx" (
 )
 if not exist "%PY%" (
     echo [build] Creating clean build environment .venv-build ...
-    py -3 -m venv "%BV%" 2>nul || python -m venv "%BV%"
+    rem PYTHON=... picks a specific interpreter (used by GitHub Actions)
+    if defined PYTHON (
+        "%PYTHON%" -m venv "%BV%"
+    ) else (
+        py -3 -m venv "%BV%" 2>nul || python -m venv "%BV%"
+    )
 )
+if not exist "%PY%" (
+    echo [error] Could not create .venv-build. Is 64-bit Python 3.13 installed?
+    goto :fail
+)
+"%PY%" -c "import sys, platform; print('[build] Python', sys.version.split()[0], platform.machine())"
 echo [build] Checking build packages ...
 "%PY%" -m pip install --upgrade pip -q
 "%PY%" -m pip install -q -r requirements.txt "pyinstaller>=6.10"

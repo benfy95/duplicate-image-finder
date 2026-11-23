@@ -21,14 +21,14 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Build (build.bat)
         shell: cmd
         env:
-          PY_PYTHON: ${{ env.PYTHON_VERSION }}    # make "py -3" pick this Python
+          PYTHON: python                  # the Python set up above
         run: call build.bat < NUL
       - name: Smoke test
         shell: bash
@@ -49,8 +49,8 @@ jobs:
   linux:
     runs-on: ubuntu-22.04          # older glibc = runs on more distros
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Packaging tools and Qt runtime libraries
@@ -82,10 +82,10 @@ jobs:
             release/*.rpm
 
   macos:
-    runs-on: macos-14              # Apple Silicon (arm64)
+    runs-on: macos-latest          # Apple Silicon (arm64)
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Build (.app, .dmg)
