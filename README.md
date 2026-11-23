@@ -1,11 +1,11 @@
 # Duplicate Image Finder
 
+![Duplicate Image Finder: groups of duplicates with the best copy kept, and a preview of the selected group](docs/screenshot.webp)
+<sub>Photos in the screenshot from [Pexels](https://www.pexels.com/), free to use under the Pexels license.</sub>
+
 A fast desktop app for **Windows, Linux and macOS** that finds duplicate images — exact copies, resized or re-compressed
 copies, images saved in another format, and **cropped** copies — and helps you keep the
 best one. It uses your GPU when it can and falls back to the CPU when it can't.
-
-<!-- TODO: add a screenshot, e.g. docs/screenshot.png -->
-<!-- ![Duplicate Image Finder](docs/screenshot.png) -->
 
 ## Features
 
