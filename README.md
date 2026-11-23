@@ -48,6 +48,13 @@ Get the file for your system from the [Releases](../../releases) page. No Python
 | Fedora / openSUSE | `duplicate-image-finder-<version>-1.x86_64.rpm` | installs to `/opt`, adds a menu entry |
 | macOS 12+ (Apple Silicon) | `DuplicateImageFinder-<version>-macOS-arm64.dmg` | drag the app to Applications |
 
+> **GPU in the downloads:** the Windows exe uses **DirectML**, which works on any DirectX 12 GPU
+> (NVIDIA, AMD, Intel) — including NVIDIA cards, which show as "(DirectML)" in the status bar.
+> The Mac app uses Core ML; the Linux packages use the CPU.
+> **NVIDIA CUDA** is faster on large first scans (up to about 2×) but is **not included in the downloads**
+> (it needs about 3 GB of PyTorch and NVIDIA libraries). To use CUDA, clone the repository and run
+> from source — see [Optional: NVIDIA CUDA](#optional-nvidia-cuda).
+
 ### Windows
 
 1. Put the exe in any folder you can write to (Desktop, Documents, a USB drive — not *Program Files*).
@@ -127,14 +134,29 @@ plugins (`requirements-optional.txt`: HEIF, RAW, and JPEG XL), and start the app
 
 ### Optional: NVIDIA CUDA
 
-With a CUDA build of PyTorch installed, *Auto* uses CUDA, which is faster than DirectML and also moves
-the keypoint pre-check to the GPU (about 3 GB download):
+CUDA is only available when running from source; the downloadable apps never include it
+(Windows uses DirectML, macOS Core ML, Linux the CPU). With an NVIDIA GPU and a recent driver:
 
-```bat
-.venv\Scripts\python -m pip install -r requirements-cuda.txt --index-url https://download.pytorch.org/whl/cu128 --extra-index-url https://pypi.org/simple
-```
+1. Clone the repository and start it once, so `run.bat` / `run.sh` creates `.venv`:
 
-The packaged apps never include PyTorch (Windows uses DirectML, macOS Core ML, Linux the CPU).
+   ```bash
+   git clone https://github.com/benfy95/duplicate-image-finder.git
+   cd duplicate-image-finder
+   ```
+
+   then run `run.bat` (Windows) or `./run.sh` (Linux) and close the app.
+
+2. Install PyTorch with CUDA into that environment (about 3 GB):
+
+   ```bat
+   .venv\Scripts\python -m pip install -r requirements-cuda.txt --index-url https://download.pytorch.org/whl/cu128 --extra-index-url https://pypi.org/simple
+   ```
+
+   On Linux use `.venv/bin/python` instead of `.venv\Scripts\python`.
+
+3. Start the app again with `run.bat` / `./run.sh`. With **Settings → Device → Auto**, the status bar
+   shows "GPU: … (CUDA)". CUDA runs the AI model, the nearest-match search and the keypoint pre-check
+   on the GPU.
 
 ### Build the packages
 
