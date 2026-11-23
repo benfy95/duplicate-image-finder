@@ -195,7 +195,7 @@ T = {
     "reset_q": "すべての設定を既定値に戻しますか？（キャッシュは残ります）",
     "a_about": "重複画像ファインダーについて",
     "about_text": "<b>重複画像ファインダー {ver}</b><br><br>完全一致・リサイズ・再エンコード・トリミングされた重複画像を見つけます。"
-                  "<br><br>作者：Ben、Claude（Anthropic）と共同開発。<br><a href='{url}'>{url}</a><br><br>"
+                  "<br><br>作者：Ben、Claude（Anthropic）と共同開発。<br><a href='{url}'>{url}</a><br><a href='mailto:{mail}'>{mail}</a><br><br>"
                   "処理デバイス：{dev}<br>対応形式：{n} 種類<br>設定とキャッシュ：{data}<br>ログ：{logs}<br><br>MIT ライセンス",
     "a_sel_variants": "重複と例外に印を付ける",
     "var_title": "例外ルール",

@@ -191,7 +191,7 @@ T = {
     "reset_q": "要将所有设置恢复为默认值吗？（缓存会保留）",
     "a_about": "关于重复图片查找器",
     "about_text": "<b>重复图片查找器 {ver}</b><br><br>可找出完全相同、缩放、重新编码及裁剪过的重复图片。<br><br>"
-                  "作者：Ben，与 Claude（Anthropic）共同开发。<br><a href='{url}'>{url}</a><br><br>"
+                  "作者：Ben，与 Claude（Anthropic）共同开发。<br><a href='{url}'>{url}</a><br><a href='mailto:{mail}'>{mail}</a><br><br>"
                   "运算设备：{dev}<br>支持格式：{n} 种<br>设置与缓存：{data}<br>日志：{logs}<br><br>MIT 许可证",
     "a_sel_variants": "标记重复文件及例外",
     "var_title": "例外规则",

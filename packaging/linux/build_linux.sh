@@ -72,7 +72,7 @@ if command -v fpm >/dev/null 2>&1; then
     cp assets/icon_512.png "$STAGE/usr/share/icons/hicolor/512x512/apps/$NAME.png"
     cp LICENSE THIRD_PARTY_NOTICES.md README.md "$STAGE/usr/share/doc/$NAME/"
     COMMON=(-s dir -C "$STAGE" -n "$NAME" -v "$VER" --license MIT
-            --maintainer "Ben (benfy95)" --url "https://github.com/benfy95/duplicate-image-finder"
+            --maintainer "Ben <ben@benfy95.net>" --url "https://github.com/benfy95/duplicate-image-finder"
             --description "Find exact, resized, re-encoded and cropped duplicate images")
     # Qt needs a few X11 / Wayland system libraries
     fpm "${COMMON[@]}" -t deb -a amd64 -p "$OUT/${NAME}_${VER}_amd64.deb" --force \

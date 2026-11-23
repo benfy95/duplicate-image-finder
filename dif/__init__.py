@@ -35,3 +35,4 @@ SETTINGS_PATH = os.path.join(DATA_DIR, "settings.json")
 
 __version__ = "0.1.0"
 PROJECT_URL = "https://github.com/benfy95/duplicate-image-finder"
+CONTACT_EMAIL = "ben@benfy95.net"

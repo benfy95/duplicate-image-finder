@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QTreeView, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget,
 )
 
-from .. import CACHE_PATH, DATA_DIR, LOG_DIR, PROJECT_URL, SETTINGS_PATH, __version__
+from .. import CACHE_PATH, CONTACT_EMAIL, DATA_DIR, LOG_DIR, PROJECT_URL, SETTINGS_PATH, __version__
 from .. import actions, i18n
 from ..session_log import SessionLog
 from ..engine import Cancelled, ScanEngine, ScanOptions
@@ -928,7 +928,7 @@ class MainWindow(QMainWindow):
         box.setTextFormat(Qt.TextFormat.RichText)
         box.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)   # clickable GitHub link
         box.setText(tr("about_text", ver=__version__, dev=self.lb_dev.text(), n=len(describe_supported()),
-                       data=DATA_DIR, logs=LOG_DIR, url=PROJECT_URL))
+                       data=DATA_DIR, logs=LOG_DIR, url=PROJECT_URL, mail=CONTACT_EMAIL))
         box.exec()
 
     def _toggle_preview(self, on):

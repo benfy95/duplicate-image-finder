@@ -194,7 +194,7 @@ Your numbers will depend on your GPU, CPU, and especially the disk the images ar
 
 ## Credits
 
-Created by **Ben** ([benfy95](https://github.com/benfy95)), with **Claude** (Anthropic).
+Created by **Ben** ([benfy95](https://github.com/benfy95), [ben@benfy95.net](mailto:ben@benfy95.net)), with **Claude** (Anthropic).
 
 Built with [PySide6 (Qt)](https://doc.qt.io/qtforpython-6/), [ONNX Runtime](https://onnxruntime.ai/)
 (DirectML / Core ML), [OpenCV](https://opencv.org/), [Pillow](https://python-pillow.org/), NumPy, and the

@@ -235,10 +235,10 @@ S = {
     "reset_q": ("Reset all settings to defaults? (The cache is kept.)", "要將所有設定恢復預設值嗎？（快取會保留）"),
     "a_about": ("About Duplicate Image Finder", "關於重複圖片搜尋器"),
     "about_text": ("<b>Duplicate Image Finder {ver}</b><br><br>Finds exact, resized, re-encoded and cropped "
-                   "duplicate images.<br><br>Created by Ben, with Claude (Anthropic).<br><a href='{url}'>{url}</a><br><br>"
+                   "duplicate images.<br><br>Created by Ben, with Claude (Anthropic).<br><a href='{url}'>{url}</a><br><a href='mailto:{mail}'>{mail}</a><br><br>"
                    "Device: {dev}<br>Supported formats: {n}<br>Settings &amp; cache: {data}<br>Logs: {logs}<br><br>MIT License",
                    "<b>重複圖片搜尋器 {ver}</b><br><br>可找出完全相同、縮放、重新編碼及裁切過的重複圖片。<br><br>"
-                   "作者：Ben，與 Claude（Anthropic）共同開發。<br><a href='{url}'>{url}</a><br><br>"
+                   "作者：Ben，與 Claude（Anthropic）共同開發。<br><a href='{url}'>{url}</a><br><a href='mailto:{mail}'>{mail}</a><br><br>"
                    "運算裝置：{dev}<br>支援格式：{n} 種<br>設定與快取：{data}<br>紀錄檔：{logs}<br><br>MIT 授權"),
     "a_sel_variants": ("Mark duplicates and exceptions", "標記重複檔案及例外"),
     "var_title": ("Exceptions", "例外規則"),
